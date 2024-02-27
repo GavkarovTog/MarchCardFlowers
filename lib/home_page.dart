@@ -1,14 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-enum Flower {
-  redCartoon,
-  blueStrange,
-  pinkMorning,
-  yellowSun,
-  greenFrog,
-  redSunrise
-}
+import 'package:march_card/animation_utils.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,113 +18,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late AnimationController _tmpReverse;
   List<Widget> _stackItems = [];
 
-  Widget _createFlower(
-      {required Flower type,
-      required double beginScale,
-      required double endScale,
-      required AnimationController turns,
-      required AnimationController scale,
-      double top = 0,
-      double left = 0}) {
-    if (top > 1 || top < 0 || left < 0 || left > 1) {
-      throw UnsupportedError(
-          "top, left parameters can only take value in [0, 1] interval");
-    }
-
-    double screenWidth = MediaQuery.of(context).size.width;
-
-    int flowerNumber = 0;
-    switch (type) {
-      case Flower.redCartoon:
-        flowerNumber = 1;
-        break;
-
-      case Flower.blueStrange:
-        flowerNumber = 2;
-        break;
-
-      case Flower.pinkMorning:
-        flowerNumber = 3;
-        break;
-
-      case Flower.yellowSun:
-        flowerNumber = 4;
-        break;
-
-      case Flower.greenFrog:
-        flowerNumber = 5;
-        break;
-
-      case Flower.redSunrise:
-        flowerNumber = 6;
-        break;
-    }
-
-    return LayoutBuilder(builder: (context, constraints) {
-      return Positioned(
-        top: constraints.maxHeight * top,
-        left: constraints.maxWidth * left,
-        child: ScaleTransition(
-          scale: _gradientController
-              .drive(Tween(begin: beginScale, end: endScale)),
-          child: RotationTransition(
-            turns: _reverseFlowerRotationController,
-            child: Image.asset(
-              "assets/images/flower_${(flowerNumber < 10 ? '0' : '') + flowerNumber.toString()}.png",
-              width: screenWidth * 0.5,
-              height: screenWidth * 0.5,
-            ),
-          ),
-        ),
-      );
-    });
-  }
-
-  AnimationController _initController(Duration duration, TickerProvider ticker,
-  {
-    bool inReverse = false,
-    bool toRepeat = false,
-    bool loopBack = false
-  }) {
-    if (loopBack && toRepeat) {
-      // TODO:
-      throw UnsupportedError("Animation can't loop back and repeat simultaneously.");
-    }
-
-    AnimationController _controller = AnimationController(duration: duration, vsync: ticker);
-
-    _controller.addStatusListener((status) {
-      if (loopBack) {
-        if (status == AnimationStatus.dismissed) {
-          _controller.forward();
-        }
-
-        else if (status == AnimationStatus.completed) {
-          _controller.reverse();
-        }
-      } else if (toRepeat) {
-        if (status == AnimationStatus.completed) {
-          _controller.forward();
-        }
-
-        if (status == AnimationStatus.dismissed) {
-          _controller.reverse(from: 1.0);
-        }
-      }
-
-    });
-
-    if (inReverse) {
-      _controller.reverse(from: 1.0);
-    } else {
-      _controller.forward();
-    }
-
-    return _controller;
-  }
 
   @override
   void initState() {
+    _gradientController = initController(const Duration(seconds: 5), this, loopBack: true);
     _gradientController =
         AnimationController(duration: const Duration(seconds: 5), vsync: this);
 
@@ -184,7 +73,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
     _reverseFlowerRotationController.reverse(from: 1.0);
 
-    _tmpReverse = _initController(const Duration(seconds: 4), this, inReverse: true, toRepeat: true);
+    _tmpReverse = initController(const Duration(seconds: 4), this, inReverse: true, toRepeat: true);
 
     _mediumFlowerRotationController =
         AnimationController(duration: const Duration(seconds: 4), vsync: this);
@@ -201,27 +90,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
+    FlowerFactory factory = FlowerFactory(screenWidth);
 
     _stackItems = [
-      _createFlower(
-        top: 0.5,
-        left: 0.5,
-        type: Flower.redCartoon,
-        beginScale: 0.5,
-        endScale: 0.5,
-        turns: _reverseFlowerRotationController,
-        scale: _gradientController,
-      ),
-
-      _createFlower(
-        top: 0.2,
-        left: 0.5,
-        type: Flower.redCartoon,
-        beginScale: 0.5,
-        endScale: 0.5,
-        turns: _tmpReverse,
-        scale: _gradientController,
-      ),
+      factory.createFlower(
+          type: FlowerType.redCartoon,
+          beginScale: 0.7,
+          endScale: 0.7,
+          turns: _tmpReverse,
+          scale: _gradientController),
     ];
 
     return Scaffold(
