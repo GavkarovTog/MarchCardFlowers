@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 enum FlowerType {
@@ -9,51 +11,56 @@ enum FlowerType {
   redSunrise
 }
 
+class AnimationControllerFactory {
+  TickerProvider ticker;
 
-AnimationController initController(Duration duration, TickerProvider ticker,
-    {
-      bool inReverse = false,
-      bool toRepeat = false,
-      bool loopBack = false
-    }) {
-  if (loopBack && toRepeat) {
-    throw UnsupportedError("Animation can't loop back and repeat simultaneously.");
-  }
+  AnimationControllerFactory(this.ticker);
 
-  AnimationController _controller = AnimationController(duration: duration, vsync: ticker);
+  AnimationController createController(Duration duration,
+      {
+        bool inReverse = false,
+        bool toRepeat = false,
+        bool loopBack = false
+      }) {
+    if (loopBack && toRepeat) {
+      throw UnsupportedError("Animation can't loop back and repeat simultaneously.");
+    }
 
-  _controller.addStatusListener((status) {
-    if (loopBack) {
-      if (status == AnimationStatus.dismissed) {
-        _controller.forward();
-      }
+    AnimationController _controller = AnimationController(duration: duration, vsync: ticker);
 
-      else if (status == AnimationStatus.completed) {
-        _controller.reverse();
-      }
-    } else if (toRepeat) {
-      if (inReverse) {
+    _controller.addStatusListener((status) {
+      if (loopBack) {
         if (status == AnimationStatus.dismissed) {
-          _controller.reverse(from: 1.0);
-        }
-      } else {
-        if (status == AnimationStatus.completed) {
           _controller.forward();
         }
+
+        else if (status == AnimationStatus.completed) {
+          _controller.reverse();
+        }
+      } else if (toRepeat) {
+        if (inReverse) {
+          if (status == AnimationStatus.dismissed) {
+            _controller.reverse(from: 1.0);
+          }
+        } else {
+          if (status == AnimationStatus.completed) {
+            _controller.forward();
+          }
+        }
       }
+    });
+
+    if (inReverse) {
+      _controller.reverse(from: 1.0);
+    } else {
+      _controller.forward();
     }
-  });
 
-  if (inReverse) {
-    _controller.reverse(from: 1.0);
-  } else {
-    _controller.forward();
+    return _controller;
   }
-
-  return _controller;
 }
 
-class Flower extends AnimatedWidget {
+class _Flower extends AnimatedWidget {
   final double size;
   final FlowerType type;
   final double beginScale;
@@ -61,7 +68,7 @@ class Flower extends AnimatedWidget {
   final AnimationController turns;
   final AnimationController scale;
 
-  Flower({
+  _Flower({
     super.key,
       required this.size,
       required this.type,
@@ -99,25 +106,31 @@ class Flower extends AnimatedWidget {
         break;
     }
 
-    return ScaleTransition(
-      scale: scale
-          .drive(Tween(begin: beginScale, end: endScale)),
-      child: RotationTransition(
-        turns: turns,
-        child: Image.asset(
-          "assets/images/flower_${(flowerNumber < 10 ? '0' : '') + flowerNumber.toString()}.png",
-          width: size,
-          height: size,
+    double effectiveSize = max(beginScale, endScale) * size;
+    print(effectiveSize);
+    return Container(
+      width: effectiveSize,
+      height: effectiveSize,
+      color: Colors.red, // TODO: if you need debug
+      child: ScaleTransition(
+        scale: scale
+            .drive(Tween<double>(begin: beginScale, end: endScale)),
+        child: RotationTransition(
+          turns: turns,
+          child: Image.asset(
+            "assets/images/flower_${(flowerNumber < 10 ? '0' : '') + flowerNumber.toString()}.png",
+            width: size,
+            height: size,
+          ),
         ),
       ),
     );
   }
-
 }
 
 class FlowerFactory {
   final double size;
-  FlowerFactory(this.size);
+  const FlowerFactory(this.size);
 
   Widget createFlower({
     required FlowerType type,
@@ -126,7 +139,7 @@ class FlowerFactory {
     required AnimationController turns,
     required AnimationController scale
   }) {
-    return Flower(
+    return _Flower(
       size: size,
       type: type,
       beginScale: beginScale,
@@ -137,65 +150,72 @@ class FlowerFactory {
   }
 }
 
-// Widget createFlower(
-//     {required FlowerType type,
-//       required double beginScale,
-//       required double endScale,
-//       required AnimationController turns,
-//       required AnimationController scale,
-//       double top = 0,
-//       double left = 0}) {
-//   if (top > 1 || top < 0 || left < 0 || left > 1) {
-//     throw UnsupportedError(
-//         "top, left parameters can only take value in [0, 1] interval");
-//   }
-//
-//   double screenWidth = MediaQuery.of(context).size.width;
-//
-//   int flowerNumber = 0;
-//   switch (type) {
-//     case FlowerType.redCartoon:
-//       flowerNumber = 1;
-//       break;
-//
-//     case FlowerType.blueStrange:
-//       flowerNumber = 2;
-//       break;
-//
-//     case FlowerType.pinkMorning:
-//       flowerNumber = 3;
-//       break;
-//
-//     case FlowerType.yellowSun:
-//       flowerNumber = 4;
-//       break;
-//
-//     case FlowerType.greenFrog:
-//       flowerNumber = 5;
-//       break;
-//
-//     case FlowerType.redSunrise:
-//       flowerNumber = 6;
-//       break;
-//   }
-//
-//   return LayoutBuilder(builder: (context, constraints) {
-//     return Positioned(
-//       top: constraints.maxHeight * top,
-//       left: constraints.maxWidth * left,
-//       child: ScaleTransition(
-//         scale: _gradientController
-//             .drive(Tween(begin: beginScale, end: endScale)),
-//         child: RotationTransition(
-//           turns: _reverseFlowerRotationController,
-//           child: Image.asset(
-//             "assets/images/flower_${(flowerNumber < 10 ? '0' : '') + flowerNumber.toString()}.png",
-//             width: screenWidth * 0.5,
-//             height: screenWidth * 0.5,
-//           ),
-//         ),
-//       ),
-//     );
-//   });
-// }
-//
+class FlowerManager {
+  final double width;
+  final double height;
+  final double size;
+  final FlowerFactory factory;
+
+  FlowerManager(this.width, this.height, this.size) : factory = FlowerFactory(size);
+
+  Widget createFlower({
+    required double widthAxis,
+    required double heightAxis,
+    required FlowerType type,
+    required double beginScale,
+    required double endScale,
+    required AnimationController turns,
+    required AnimationController scale
+  }) {
+    if (widthAxis < 0 || widthAxis > 1 || heightAxis < 0 || heightAxis > 1) {
+      throw UnsupportedError("Axis values must be in interval 0 <= x <= 1");
+    }
+
+    double effectiveSize = max(beginScale, endScale) * size / 2;
+    double safeLeft = (width - effectiveSize * 2) * widthAxis;
+    double safeTop = (height - effectiveSize * 2) * heightAxis;
+
+    return Positioned(
+        left: safeLeft,
+        top: safeTop,
+        child: factory.createFlower(type: type, beginScale: beginScale, endScale: endScale, turns: turns, scale: scale)
+    );
+  }
+}
+
+class AnimatedLinearGradientContainer extends AnimatedWidget {
+  final List<ColorTween> tweens;
+  final AnimationController controller;
+  final AlignmentGeometry begin;
+  final AlignmentGeometry end;
+  final Widget child;
+
+  const AnimatedLinearGradientContainer(
+    {
+      super.key,
+      this.begin = Alignment.centerLeft,
+      this.end = Alignment.centerRight,
+      required this.tweens,
+      required this.controller,
+      required this.child,
+    }
+  ) : super(listenable: controller);
+
+  @override
+  Widget build(BuildContext context) {
+    List<Color> colors = tweens.map((tween) => controller.drive(tween).value!).toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: begin,
+          end: end,
+          colors: colors
+        )
+      ),
+      child: child,
+    );
+  }
+  
+  
+}
