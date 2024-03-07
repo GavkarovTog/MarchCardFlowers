@@ -3,12 +3,12 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 enum FlowerType {
-  redCartoon,
-  blueStrange,
-  pinkMorning,
-  yellowSun,
-  greenFrog,
-  redSunrise
+  sunFlower,
+  redRose,
+  orangeFive,
+  blueCrystal,
+  pinkCookie,
+  pinkRegular
 }
 
 class AnimationControllerFactory {
@@ -20,40 +20,42 @@ class AnimationControllerFactory {
       {
         bool inReverse = false,
         bool toRepeat = false,
-        bool loopBack = false
+        bool loopBack = false,
+        double lowerBound = 0.0,
+        double upperBound = 1.0
       }) {
     if (loopBack && toRepeat) {
       throw UnsupportedError("Animation can't loop back and repeat simultaneously.");
     }
 
-    AnimationController _controller = AnimationController(duration: duration, vsync: ticker);
+    AnimationController _controller = AnimationController(duration: duration, vsync: ticker, lowerBound: lowerBound, upperBound: upperBound);
 
     _controller.addStatusListener((status) {
       if (loopBack) {
         if (status == AnimationStatus.dismissed) {
-          _controller.forward();
+          _controller.forward(from: _controller.lowerBound);
         }
 
         else if (status == AnimationStatus.completed) {
-          _controller.reverse();
+          _controller.reverse(from: _controller.upperBound);
         }
       } else if (toRepeat) {
         if (inReverse) {
           if (status == AnimationStatus.dismissed) {
-            _controller.reverse(from: 1.0);
+            _controller.reverse(from: _controller.upperBound);
           }
         } else {
           if (status == AnimationStatus.completed) {
-            _controller.forward();
+            _controller.forward(from: _controller.lowerBound);
           }
         }
       }
     });
 
     if (inReverse) {
-      _controller.reverse(from: 1.0);
+      _controller.reverse(from: _controller.upperBound);
     } else {
-      _controller.forward();
+      _controller.forward(from: _controller.lowerBound);
     }
 
     return _controller;
@@ -81,47 +83,50 @@ class _Flower extends AnimatedWidget {
   Widget build(BuildContext context) {
     int flowerNumber = 0;
     switch (type) {
-      case FlowerType.redCartoon:
+      case FlowerType.sunFlower:
         flowerNumber = 1;
         break;
 
-      case FlowerType.blueStrange:
+      case FlowerType.redRose:
         flowerNumber = 2;
         break;
 
-      case FlowerType.pinkMorning:
+      case FlowerType.orangeFive:
         flowerNumber = 3;
         break;
 
-      case FlowerType.yellowSun:
+      case FlowerType.blueCrystal:
         flowerNumber = 4;
         break;
 
-      case FlowerType.greenFrog:
+      case FlowerType.pinkCookie:
         flowerNumber = 5;
         break;
 
-      case FlowerType.redSunrise:
+      case FlowerType.pinkRegular:
         flowerNumber = 6;
         break;
     }
 
     double effectiveSize = max(beginScale, endScale) * size;
-    print(effectiveSize);
+    double scaleValue = scale.drive(
+      Tween<double>(
+        begin: beginScale,
+        end: endScale
+      )
+    ).value;
+
     return Container(
+      alignment: Alignment.center,
       width: effectiveSize,
       height: effectiveSize,
-      color: Colors.red, // TODO: if you need debug
-      child: ScaleTransition(
-        scale: scale
-            .drive(Tween<double>(begin: beginScale, end: endScale)),
-        child: RotationTransition(
-          turns: turns,
-          child: Image.asset(
-            "assets/images/flower_${(flowerNumber < 10 ? '0' : '') + flowerNumber.toString()}.png",
-            width: size,
-            height: size,
-          ),
+      // color: Colors.red, // TODO: if you need debug
+      child: RotationTransition(
+        turns: turns,
+        child: Image.asset(
+          "assets/images/flower_${(flowerNumber < 10 ? '0' : '') + flowerNumber.toString()}.png",
+          width: size * scaleValue,
+          height: size * scaleValue,
         ),
       ),
     );
@@ -218,4 +223,43 @@ class AnimatedLinearGradientContainer extends AnimatedWidget {
   }
   
   
+}
+
+class AnimatedText extends AnimatedWidget {
+  final String content;
+  final AnimationController controller;
+  final Tween? color;
+  final Tween? shadowColor;
+  final Tween<double>? fontSize;
+  final Tween<double>? blurRadius;
+  final String? fontFamily;
+
+  const AnimatedText(
+    this.content,
+    {
+      super.key,
+      required this.controller,
+      this.color,
+      this.shadowColor,
+      this.fontSize,
+      this.fontFamily,
+      this.blurRadius
+    }
+  ) : super(listenable: controller);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(content, style: DefaultTextStyle.of(context).style.copyWith(
+      color: (color == null) ? null : controller.drive(color!).value as Color,
+      shadows: [
+        Shadow(
+          blurRadius: (blurRadius == null) ? 0 : controller.drive(blurRadius!).value,
+          color: (shadowColor == null) ? Colors.transparent : controller.drive(shadowColor!).value! as Color
+        )
+      ],
+      fontSize: (fontSize == null) ? null : controller.drive(fontSize!).value,
+      fontFamily: "Christmass"
+    ));
+  }
+
 }

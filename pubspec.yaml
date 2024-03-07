@@ -36,6 +36,8 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
   newton_particles: ^0.1.7
+  audioplayers: ^5.2.1
+  flutter_launcher_icons: ^0.13.1
 
 dev_dependencies:
   flutter_test:
@@ -95,16 +97,9 @@ flutter:
     - assets/images/flower_04.png
     - assets/images/flower_05.png
     - assets/images/flower_06.png
+    - assets/sounds/ambient.mp3
 
   fonts:
-    - family: Rubik
-      fonts:
-        - asset: assets/fonts/RubikPuddles-Regular.ttf
-
-    - family: Kablammo
-      fonts:
-        - asset: assets/fonts/Kablammo-Regular-VariableFont_MORF.ttf
-
     - family: Christmass
       fonts:
         - asset: assets/fonts/Christmas ScriptC.ttf

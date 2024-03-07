@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:march_card/animated_flowers_background.dart';
 import 'package:march_card/animation_utils.dart';
 import 'dart:math';
+
+import 'animated_particles_background.dart';
+
+import 'package:audioplayers/audioplayers.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -10,66 +15,49 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin, WidgetsBindingObserver {
+  late AnimationController _particleController;
   late AnimationController _gradientController;
-  late AnimationController _mainFlowerRotationController;
-  late AnimationController _fasterFlowerRotationController;
-  late AnimationController _reverseFlowerRotationController;
-  late AnimationController _mediumFlowerRotationController;
+  late AnimationController _textController;
+
+  AudioPlayer player = AudioPlayer();
   // List<Widget> _stackItems = [];
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      player.pause();
+    } else if (state == AppLifecycleState.resumed) {
+      player.resume();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
   void initState() {
+    WidgetsBinding.instance.addObserver(this);
+
     AnimationControllerFactory factory = AnimationControllerFactory(this);
 
+    _particleController = factory.createController(const Duration(seconds: 2), loopBack: true);
     _gradientController = factory.createController(const Duration(seconds: 5), loopBack: true,);
-    _mainFlowerRotationController = factory.createController(const Duration(seconds: 6), toRepeat: true);
-    _fasterFlowerRotationController = factory.createController(const Duration(seconds: 2), toRepeat: true);
-    _reverseFlowerRotationController = factory.createController(const Duration(seconds: 4), inReverse: true, toRepeat: true);
-    _mediumFlowerRotationController = factory.createController(const Duration(seconds: 4), toRepeat: true);
+    _textController = factory.createController(const Duration(seconds: 6), loopBack: true);
+
+    player.play(AssetSource("sounds/ambient.mp3"));
+    player.onPlayerComplete.listen((event) {
+      player.play(AssetSource("sounds/ambient.mp3"));
+    });
 
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-
-    Widget animationTopBar = LayoutBuilder(
-      builder: (context, constraints) {
-        FlowerManager manager = FlowerManager(
-            constraints.maxWidth,
-            constraints.maxHeight,
-            min(constraints.maxWidth, constraints.maxHeight));
-
-        return Container(
-          // color: Colors.blue,
-          child: Stack(
-              children: [
-
-                // manager.createFlower(
-                //     widthAxis: 0,
-                //     heightAxis: 0.5,
-                //     type: FlowerType.yellowSun,
-                //     beginScale: 0.6,
-                //     endScale: 0.6,
-                //     turns: _reverseFlowerRotationController,
-                //     scale: _gradientController),
-
-                // Center big red flower
-                manager.createFlower(
-                  widthAxis: 0.5,
-                  heightAxis: 0.5,
-                  type: FlowerType.redCartoon,
-                  beginScale: 1,
-                  endScale: 1,
-                  turns: _reverseFlowerRotationController,
-                  scale: _gradientController),
-              ]
-          ),
-        );
-      }
-    );
-
     return Scaffold(
       body: SafeArea(
         top: false,
@@ -91,35 +79,32 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               )
             ],
             controller: _gradientController,
-            child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+
+            child: Stack(
+              children: [
+                AnimatedParticlesBackground(controller: _particleController,),
+                AnimatedFlowersBackground(),
+                Center(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: animationTopBar,
+                      // const SizedBox(height: 200),
+                      AnimatedText(
+                        "8 марта",
+                        controller: _textController,
+                        color: ConstantTween(Colors.white),
+                        shadowColor: ColorTween(
+                            begin: Colors.white,
+                            end: Colors.red.shade100
+                        ),
+                        blurRadius: Tween<double>(
+                          begin: 20,
+                          end: 30
+                        ),
+                        fontSize: ConstantTween(128),
                       ),
-                      Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // const SizedBox(height: 200),
-                            Center(
-                              child: Text("8 марта",
-                                  style: TextStyle(
-                                      color: _gradientController
-                                          .drive(ColorTween(
-                                              begin: Colors.white,
-                                              end: Colors.orange.shade200))
-                                          .value,
-                                      fontSize: 128,
-                                      fontFamily: "Christmass",
-                                      shadows: [
-                                        const Shadow(
-                                            blurRadius: 20, color: Colors.white38)
-                                      ])),
-                            ),
-                            const Text(
-                              """
+                      const Text(
+                        """
 Пусть весна подарит счастье,
 Настроение и успех.
 Пусть обходят вас ненастья,
@@ -129,17 +114,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 Оптимизма и добра.
 С праздником 8 Марта!
 Вы прекрасны, как всегда!
-                              """,
-                              style: TextStyle(
-                                  color: Colors.yellowAccent,
-                                  fontSize: 20,
-                                  fontFamily: "Sensei"),
-                            ),
-                          ],
-                        ),
+                        """,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: Colors.yellowAccent,
+                            fontSize: 20,
+                            fontFamily: "Sensei"),
                       ),
                     ],
-                  )
+                  ),
+                ),
+                ]
+            )
           ),
         ),
       ),
